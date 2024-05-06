@@ -1,0 +1,446 @@
+---
+title: "Truck Weight Prediction App"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+runtime: shiny
+css: app_style.css
+---
+
+```{r setup, include=FALSE}
+
+# libraries
+library(flexdashboard)
+library(tidyverse)
+library(gt)
+library(recipes)
+library(tidymodels)
+library(tidyquant)
+library(plotly)
+library(vip)
+library(shiny)
+library(shinyjs)
+library(shinyWidgets)
+
+# data
+
+app_data <- read_rds("00_Data/final_data_for_app.rds")
+
+#scripts
+source("01_Code/process_data_for_app.R")
+
+
+# models
+model_xgb_actualweight_total <- read_rds("06_models/app_model_ActualWeightTotal.rds")
+model_xgb_actualweight_front <- read_rds("06_models/app_model_ActualWeightFront.rds")
+model_xgb_actualweight_back <- read_rds("06_models/app_model_ActualWeightBack.rds")
+
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+useShinyjs(rmd=TRUE)
+
+# Engine----
+
+pickerInput(inputId  = "picker_engine", 
+            label    = h4("Engine Type Code"),
+            choices  = app_data %>% distinct(Engine),
+            selected = "1012019")
+
+br()
+
+# Transmission----
+
+pickerInput(inputId  = "picker_transmission", 
+            label    = h4("Transmission Type Code"),
+            choices  = app_data %>% distinct(Transmission),
+            selected = "2700028")
+
+br()
+
+# FrontAxlePosition----
+
+pickerInput(inputId  = "picker_FrontAxlePosition", 
+            label    = h4("Front Axle Position Type Code"),
+            choices  = app_data %>% distinct(FrontAxlePosition),
+            selected = "3690005")
+
+br()
+
+# WheelBase----
+
+pickerInput(inputId  = "picker_WheelBase",
+            label    = h4("Wheel Base (Inches)"),
+            choices  = app_data %>% distinct(WheelBase) %>% arrange(desc(WheelBase)),
+            selected = max(app_data$WheelBase))
+
+br()
+
+# Overhang----
+
+pickerInput(inputId  = "picker_Overhang",
+            label    = h4("Overhang (Inches)"),
+            choices  = app_data %>% distinct(Overhang)%>% arrange(desc(Overhang)),
+            selected = max(app_data$Overhang))
+
+br()
+
+# FrameRails----
+
+pickerInput(inputId  = "picker_FrameRails", 
+            label    = h4("Frame Rails Type Code"),
+            choices  = app_data %>% distinct(FrameRails),
+            selected = "403011")
+
+br()
+
+# Liner----
+
+pickerInput(inputId  = "picker_Liner", 
+            label    = h4("Liner Type Code"),
+            choices  = app_data %>% distinct(Liner),
+            selected = "404002")
+
+br()
+
+# FrontEndExt----
+
+pickerInput(inputId  = "picker_FrontEndExt", 
+            label    = h4("Front End Ext Type Code"),
+            choices  = app_data %>% distinct(FrontEndExt),
+            selected = "4070004")
+
+br()
+
+# Cab----
+
+pickerInput(inputId  = "picker_cab", 
+            label    = h4("Cab Type Code"),
+            choices  = app_data %>% distinct(Cab),
+            selected = "5000004")
+
+br()
+
+# RearAxels----
+
+pickerInput(inputId  = "picker_RearAxels", 
+            label    = h4("Rear Axle Type Code"),
+            choices  = app_data %>% distinct(RearAxels),
+            selected = "330507")
+
+br()
+
+# RearSusp----
+
+pickerInput(inputId  = "picker_RearSusp", 
+            label    = h4("Rear Susp Type Code"),
+            choices  = app_data %>% distinct(RearSusp),
+            selected = "3500004")
+
+br()
+
+# FrontSusp----
+
+pickerInput(inputId  = "picker_FrontSusp", 
+            label    = h4("Front Susp Type Code"),
+            choices  = app_data %>% distinct(FrontSusp),
+            selected = "3700011")
+
+br()
+
+# RearTires----
+
+pickerInput(inputId  = "picker_RearTires", 
+            label    = h4("Rear Tires Type Code"),
+            choices  = app_data %>% distinct(RearTires),
+            selected = "933469")
+
+br()
+
+# FrontTires----
+
+pickerInput(inputId  = "picker_FrontTires", 
+            label    = h4("Front Tires Type Code"),
+            choices  = app_data %>% distinct(FrontTires),
+            selected = "930469")
+
+br()
+
+# TagAxle----
+
+pickerInput(inputId  = "picker_TagAxle", 
+            label    = h4("Tag Axle Type Code"),
+            choices  = app_data %>% distinct(TagAxle),
+            selected = "3P1998")
+
+br()
+
+# EngineFamily----
+
+pickerInput(inputId  = "picker_EngineFamily", 
+            label    = h4("Engine Family Type Code"),
+            choices  = app_data %>% distinct(EngineFamily),
+            selected = "101D102")
+
+br()
+
+# TransmissionFamily----
+
+pickerInput(inputId  = "picker_TransmissionFamily", 
+            label    = h4("Transmission Family Type Code"),
+            choices  = app_data %>% distinct(TransmissionFamily),
+            selected = "270C25")
+
+br()
+
+# RearWheels----
+
+pickerInput(inputId  = "picker_RearWheels", 
+            label    = h4("Rear Wheels Type Code"),
+            choices  = app_data %>% distinct(RearWheels),
+            selected = "22.5x9, ALUMINUM, 6")
+
+br()
+
+# FrontWheels----
+
+pickerInput(inputId  = "picker_FrontWheels", 
+            label    = h4("Front Wheels Type Code"),
+            choices  = app_data %>% distinct(FrontWheels),
+            selected = "22.5x9, ALUMINUM, 3.12")
+
+
+br()
+hr()
+
+
+actionButton(inputId = "apply", label = "Apply", icon = icon(name = "play", lib = "font-awesome"))
+
+actionButton(inputId = "reset", label = "Reset", icon = icon("sync"))
+
+observeEvent(eventExpr = input$reset, handlerExpr = {
+  
+  updatePickerInput(session = session, inputId = "picker_engine",
+                    selected = "1012019")
+  
+  updatePickerInput(session = session, inputId = "picker_transmission",
+                    selected = "2700028")
+  
+  updatePickerInput(session = session, inputId = "picker_FrontAxlePosition",
+                    selected = "3690005")
+  
+  updatePickerInput(session = session, inputId = "picker_WheelBase",
+                    selected = max(app_data$WheelBase))
+  
+  updatePickerInput(session = session, inputId = "picker_Overhang",
+                    selected = max(app_data$Overhang))
+  
+   updatePickerInput(session = session, inputId = "picker_FrameRails",
+                    selected = "403011")
+   
+   updatePickerInput(session = session, inputId = "picker_Liner",
+                    selected = "404002")
+   
+   updatePickerInput(session = session, inputId = "picker_FrontEndExt",
+                    selected = "4070004")
+   
+   updatePickerInput(session = session, inputId = "picker_cab",
+                    selected = "5000004")
+   
+   updatePickerInput(session = session, inputId = "picker_RearAxels",
+                    selected = "330507")
+   
+   updatePickerInput(session = session, inputId = "picker_RearSusp",
+                    selected = "3500004")
+   
+   updatePickerInput(session = session, inputId = "picker_FrontSusp",
+                    selected = "3700011")
+   
+    updatePickerInput(session = session, inputId = "picker_RearTires",
+                    selected = "933469")
+    
+    updatePickerInput(session = session, inputId = "picker_FrontTires",
+                    selected = "930469")
+    
+    updatePickerInput(session = session, inputId = "picker_TagAxle",
+                    selected = "3P1998")
+    
+    updatePickerInput(session = session, inputId = "picker_EngineFamily",
+                    selected = "101D102")
+    
+    updatePickerInput(session = session, inputId = "picker_TransmissionFamily",
+                    selected = "270C25")
+    
+    updatePickerInput(session = session, inputId = "picker_RearWheels",
+                    selected = "22.5x9, ALUMINUM, 6")
+    
+    updatePickerInput(session = session, inputId = "picker_FrontWheels",
+                    selected = "22.5x9, ALUMINUM, 3.12")
+  
+  
+  delay(ms=300, expr = {
+    click(id = "apply")
+  })
+  
+})
+
+```
+
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+
+```{r}
+
+new_truck_back_weight <- eventReactive(eventExpr =input$apply , valueExpr = {
+  
+  generate_truck_weight(
+  Engine = input$picker_engine,
+                        Transmission = input$picker_transmission,
+                        FrontAxlePosition = input$picker_FrontAxlePosition,
+                        WheelBase = input$picker_WheelBase,
+                        Overhang = input$picker_Overhang,
+                        FrameRails = input$picker_FrameRails,
+                        Liner = input$picker_Liner,
+                        FrontEndExt = input$picker_FrontEndExt,
+                        Cab = input$picker_cab,
+                        RearAxels = input$picker_RearAxels,
+                        RearSusp = input$picker_RearSusp,
+                        FrontSusp = input$picker_FrontSusp,
+                        RearTires = input$picker_RearTires,
+                        FrontTires = input$picker_FrontTires,
+                        TagAxle = input$picker_TagAxle,
+                        EngineFamily = input$picker_EngineFamily,
+                        TransmissionFamily = input$picker_TransmissionFamily,
+                        RearWheels = input$picker_RearWheels,
+                        FrontWheels= input$picker_FrontWheels, 
+                        model_xgb_actualweight_back
+) %>% 
+    rename(`Back weight (lbs)` = .pred)
+  
+},ignoreNULL = FALSE)
+
+new_truck_front_weight <- eventReactive(eventExpr =input$apply , valueExpr = {
+  
+  generate_truck_weight(
+  Engine = input$picker_engine,
+                        Transmission = input$picker_transmission,
+                        FrontAxlePosition = input$picker_FrontAxlePosition,
+                        WheelBase = input$picker_WheelBase,
+                        Overhang = input$picker_Overhang,
+                        FrameRails = input$picker_FrameRails,
+                        Liner =input$picker_Liner,
+                        FrontEndExt = input$picker_FrontEndExt,
+                        Cab = input$picker_cab,
+                        RearAxels = input$picker_RearAxels,
+                        RearSusp = input$picker_RearSusp,
+                        FrontSusp = input$picker_FrontSusp,
+                        RearTires = input$picker_RearTires,
+                        FrontTires = input$picker_FrontTires,
+                        TagAxle = input$picker_TagAxle,
+                        EngineFamily = input$picker_EngineFamily,
+                        TransmissionFamily = input$picker_TransmissionFamily,
+                        RearWheels = input$picker_RearWheels,
+                        FrontWheels= input$picker_FrontWheels, 
+                        model_xgb_actualweight_front
+) %>% 
+    rename(`Front weight (lbs)` = .pred)
+  
+},ignoreNULL = FALSE)
+
+
+new_truck_total_weight <- eventReactive(eventExpr =input$apply , valueExpr = {
+  
+  generate_truck_weight(
+  Engine = input$picker_engine,
+                        Transmission = input$picker_transmission,
+                        FrontAxlePosition = input$picker_FrontAxlePosition,
+                        WheelBase = input$picker_WheelBase,
+                        Overhang = input$picker_Overhang,
+                        FrameRails = input$picker_FrameRails,
+                        Liner =input$picker_Liner,
+                        FrontEndExt = input$picker_FrontEndExt,
+                        Cab = input$picker_cab,
+                        RearAxels = input$picker_RearAxels,
+                        RearSusp = input$picker_RearSusp,
+                        FrontSusp = input$picker_FrontSusp,
+                        RearTires = input$picker_RearTires,
+                        FrontTires = input$picker_FrontTires,
+                        TagAxle = input$picker_TagAxle,
+                        EngineFamily = input$picker_EngineFamily,
+                        TransmissionFamily = input$picker_TransmissionFamily,
+                        RearWheels = input$picker_RearWheels,
+                        FrontWheels= input$picker_FrontWheels, 
+                        model_xgb_actualweight_total
+) %>% 
+    rename(`Total weight (lbs)` = .pred)
+  
+},ignoreNULL = FALSE)
+
+
+```
+
+
+### Weight Predictions
+
+```{r}
+
+renderTable({
+  
+  bind_cols(
+     new_truck_front_weight()
+    ,new_truck_back_weight() 
+    ,new_truck_total_weight()
+    )
+  
+})
+
+```
+
+### Feature Importance Plot: Total Weight
+
+```{r}
+
+output$plotly_3 <- renderPlotly({
+  feature_importance_plot_function(model_xgb_actualweight_back, 
+                                           target = "TOtal Weight")
+})
+
+plotlyOutput("plotly_3")
+
+```
+
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Feature Importance Plot: Front Weight
+
+```{r}
+
+output$plotly_1 <- renderPlotly({
+  feature_importance_plot_function(model_xgb_actualweight_front, 
+                                           target = "Front Weight")
+})
+
+plotlyOutput("plotly_1")
+
+```
+
+### Feature Importance Plot: Back Weight
+
+```{r}
+
+output$plotly_2 <- renderPlotly({
+  feature_importance_plot_function(model_xgb_actualweight_back, 
+                                           target = "Back Weight")
+})
+
+plotlyOutput("plotly_2")
+
+```
+

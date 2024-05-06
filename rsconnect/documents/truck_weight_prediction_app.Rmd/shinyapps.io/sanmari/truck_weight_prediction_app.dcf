@@ -1,0 +1,12 @@
+name: truck_weight_prediction_app
+title: truck_weight_prediction_app
+username: sanmari
+account: sanmari
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11817039
+bundleId: 8519631
+url: https://sanmari.shinyapps.io/truck_weight_prediction_app/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
